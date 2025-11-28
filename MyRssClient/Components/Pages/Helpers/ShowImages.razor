@@ -1,0 +1,79 @@
+﻿@using Microsoft.EntityFrameworkCore
+@using MyRssClient.Models
+@inject MyRssClient.Data.IConverterService<System.ServiceModel.Syndication.SyndicationFeed, Models.Channel, Models.Post> converterService
+@inject IDbContextFactory<MyRssClient.Data.MyContext> DbFactory
+
+<div class="mb-3">
+    @if (Channel.Images is null) {
+        <label asp-for="RSS_Channel.Title" class="control-label">No images here</label>
+    } else {
+        <label asp-for="RSS_Channel.Title" class="control-label">@Header</label>
+        <div class="d-flex gap-2">
+            @foreach (var image in Channel.Images) {
+                <img
+                    src="@image.ImageAsBase64"
+                    class="@((image.IsSelected) ? "img-thumbnail border-success" : "img-thumbnail")"
+                    @onclick="@(Disabled ? null : (() => SelectImage(image)))"
+                />
+            }
+        </div>
+    }
+    @if (!Disabled) {
+        <div class="d-flex gap-2">
+            <input @bind="newImageLink" class="form-control" />
+            <button type="button" @onclick="AddImage" disabled="@buttonDisabled" class="btn btn-secondary">@buttonDisplayText</button>
+            @* https://www.amnesty.de/themes/custom/ai_theme/favicon.ico *@
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public required Channel Channel { get; set; }
+    [Parameter]
+    public EventCallback<Channel> ChannelChanged { get; set; }
+    [Parameter]
+    public string Header { get; set; }
+    [Parameter]
+    public bool Disabled { get; set; } = false;
+
+    // protected override async Task OnInitializedAsync() {
+    //     using var context = DbFactory.CreateDbContext();
+    //     var pics = context.ChannelImages.Select(i => i);
+    //     var pix = context.Channels.FirstOrDefault(c => c.Id == Channel.Id);
+
+    // }
+
+    private string newImageLink = "https://www.almayadeen.net/mdn2023/images/favicon.png"; // string.Empty;
+    private RenderFragment buttonDisplayText = buttonReadyText;
+    private static readonly RenderFragment buttonReadyText = @<span>Add Image</span>;
+    private static readonly RenderFragment buttonLoadingAnimation = @<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="12" cy="3.5" r="1.5"><animateTransform attributeName="transform" calcMode="discrete" dur="1.2s" repeatCount="indefinite" type="rotate" values="0 12 12;90 12 12;180 12 12;270 12 12" /><animate attributeName="opacity" dur="0.3s" repeatCount="indefinite" values="1;1;0" /></circle><circle cx="12" cy="3.5" r="1.5" transform="rotate(30 12 12)"><animateTransform attributeName="transform" begin="0.1s" calcMode="discrete" dur="1.2s" repeatCount="indefinite" type="rotate" values="30 12 12;120 12 12;210 12 12;300 12 12" /><animate attributeName="opacity" begin="0.1s" dur="0.3s" repeatCount="indefinite" values="1;1;0" /></circle><circle cx="12" cy="3.5" r="1.5" transform="rotate(60 12 12)"><animateTransform attributeName="transform" begin="0.2s" calcMode="discrete" dur="1.2s" repeatCount="indefinite" type="rotate" values="60 12 12;150 12 12;240 12 12;330 12 12" /><animate attributeName="opacity" begin="0.2s" dur="0.3s" repeatCount="indefinite" values="1;1;0" /></circle></g></svg>;
+    private bool buttonDisabled = false;
+    private async void AddImage() {
+        buttonDisabled = true;
+        buttonDisplayText = buttonLoadingAnimation;
+        Uri path = new(newImageLink);
+        try {
+            var image = await converterService.GetMyImage(path);
+            if (image is not null) {
+                Channel.Images.Add(new ChannelImage() { Id = Guid.NewGuid().ToString(), Path = path, ImageBytes = image, Channel = Channel });
+            } else {
+                // Show error message.
+            }
+        } catch {
+            // Show error message.
+        } finally {
+            buttonDisabled = false;
+            buttonDisplayText = buttonReadyText;
+            StateHasChanged();
+            await ChannelChanged.InvokeAsync(Channel);
+        }
+    }
+
+    private void SelectImage(ChannelImage image) {
+        foreach (var i in Channel.Images) {
+            i.IsSelected = false;
+        }
+        image.IsSelected = true;
+    }
+}

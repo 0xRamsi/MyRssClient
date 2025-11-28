@@ -1,0 +1,51 @@
+﻿@page "/channels"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using MyRssClient.Models
+@using MyRssClient.Data
+@using System.Text.Json
+@implements IAsyncDisposable
+@inject IDbContextFactory<MyRssClient.Data.MyContext> DbFactory
+
+<PageTitle>Index</PageTitle>
+
+<h1>Index</h1>
+
+<p>
+    <a href="channels/create">Create New</a>
+</p>
+
+<QuickGrid Class="table" Items="context.Channels">
+    <PropertyColumn Property="channel => channel.Title" />
+    <PropertyColumn Property="channel => channel.RssLink" />
+    <TemplateColumn Context="channel" Title="URLs"><ul>
+        @foreach (var url in channel.URLs.Take(3)) {
+            <li>@url</li>
+        }
+        @if(channel.URLs.Count > 3) {
+            <li>...</li>
+        }
+        </ul>
+    </TemplateColumn>
+    <PropertyColumn Property="channel => channel.Description" />
+    <PropertyColumn Property="channel => channel.Language" />
+    <PropertyColumn Property="channel => channel.LastPublishDate" />
+    <PropertyColumn Property="channel => channel.LastFetchAt" />
+    <PropertyColumn Property="channel => channel.Images.Count" Title="Images" />
+
+    <TemplateColumn Context="channel">
+        <a href="@($"channels/edit?id={channel.Id}")">Edit</a> |
+        <a href="@($"channels/details?id={channel.Id}")">Details</a> |
+        <a href="@($"channels/delete?id={channel.Id}")">Delete</a>
+    </TemplateColumn>
+</QuickGrid>
+
+@code {
+    private MyContext context = default!;
+
+    protected override void OnInitialized() {
+        context = DbFactory.CreateDbContext();
+    }
+
+    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+}
