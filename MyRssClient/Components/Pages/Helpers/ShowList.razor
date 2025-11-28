@@ -1,0 +1,59 @@
+﻿@using Microsoft.AspNetCore.Mvc
+
+<div class="mb-3">
+    @if (URLs == null || URLs.Count() < 1) {
+        <label asp-for="RSS_Channel.Title" class="control-label">Empty list for @Header</label>
+    } else {
+        <label asp-for="RSS_Channel.Title" class="control-label">@Header</label>
+        <ul>
+            @for (int i = 0; i < URLs.Count(); i++) {
+                var currentIndex = i;
+                <li>
+                    <input value="@EditableURLs[i]" @onchange="e => OnUrlChanged(currentIndex, e.Value.ToString())" class="form-control" />
+                    @* <ValidationMessage For="() => Channel.URLAsJson" class="text-danger" /> *@
+                </li>
+            }
+        </ul>
+    }
+    <div class="d-flex gap-2">
+        <InputText @bind-Value="newElement" class="form-control" placeholder="Enter URL" />
+        <button type="button" class="btn btn-secondary" @onclick="AddToList">Add Link</button>
+        @* <ValidationMessage For="() => Channel.URL" class="text-danger" /> *@
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public IList<Uri>? URLs { get; set; }
+    [Parameter]
+    public EventCallback<IList<Uri>> URLsChanged { get; set; }
+    [Parameter]
+    public required string Header { get; set; }
+    [Parameter]
+    public bool Disabled { get; set; } = false;
+
+    private List<string> EditableURLs => URLs?.Select(u => u.ToString()).ToList() ?? new List<string>();
+    private void OnUrlChanged(int index, string newValue) {
+        if (URLs is null) {
+            URLs = [];
+        }
+        if (Uri.TryCreate(newValue, UriKind.RelativeOrAbsolute, out var uri)) {
+            // Update the corresponding URL in the original collection
+            URLs[index] = uri;
+            URLsChanged.InvokeAsync(URLs);
+        }
+    }
+    private string newElement = string.Empty;
+    private void AddToList() {
+        if (URLs is null) {
+            URLs = [];
+        }
+        try {
+            Uri item = new(newElement);
+            if (item is not null) {
+                URLs.Add(item);
+            }     // else should be a validation error
+            URLsChanged.InvokeAsync(URLs);
+        } catch { /* catch should be a validation error */ }
+    }
+}

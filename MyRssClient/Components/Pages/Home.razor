@@ -1,0 +1,30 @@
+﻿@page "/"
+@inject NavigationManager Navigation
+
+<PageTitle>Home</PageTitle>
+
+<h1>Hello, world!</h1>
+
+This is just a show of this project. It has no user-logins, and every change is visible to all. Feel free to try it out, but consider that other people might be here at the same time.
+<br />
+<br />
+To do: Show here a list of some posts from all subscriptions.
+<ul>
+    <li>Random</li>
+    <li>Chronological</li>
+    <li>Unread</li>
+    <li>Other ranking algorithm</li>
+</ul>
+
+@code {
+    protected override void OnAfterRender(bool firstRender) {
+        base.OnAfterRender(firstRender);
+        var tagesschau = "34d2e55b-a6fe-4b14-9e67-262e86a784f0";
+        var almayadeen = "ba2e612c-ea87-4594-a0bf-bf82745e2efb";
+        // NavigationManager.NavigateTo($"/subscription/{tagesschau}");
+        // NavigationManager.NavigateTo("/channels/");
+        // NavigationManager.NavigateTo("/channels/create");
+        // NavigationManager.NavigateTo($"/movies/details?id={id}");
+
+    }
+}

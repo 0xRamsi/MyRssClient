@@ -1,0 +1,112 @@
+﻿@page "/channels/create"
+@using Microsoft.EntityFrameworkCore
+@using System.Xml
+@using System.ServiceModel.Syndication
+@using MyRssClient.Models
+@inject IDbContextFactory<MyRssClient.Data.MyContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject MyRssClient.Data.IConverterService<System.ServiceModel.Syndication.SyndicationFeed, MyRssClient.Models.Channel, MyRssClient.Models.Post> feedToDbConverter
+@inject MyRssClient.Data.IRssService rssService
+
+<PageTitle>Create</PageTitle>
+
+<h1>Create</h1>
+
+<h2>Channel</h2>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="FeedURL" OnValidSubmit="FetchChannel" FormName="create" Enhance>
+            <div class="mb-3">
+                <label for="title" class="form-label">Title:</label>
+                <InputText id="title" @bind-Value="FeedURL" class="form-control" />
+                <ValidationMessage For="() => FeedURL" class="text-danger" />
+            </div>
+            <button type="submit" class="btn btn-primary">Fetch</button>
+        </EditForm>
+        @if (Channel is not null) {
+            <EditForm method="post" Model="Channel" OnValidSubmit="AddChannel" FormName="create" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger" role="alert"/>
+                <div class="mb-3">
+                    <label for="title" class="form-label">Title:</label> 
+                    <InputText id="title" @bind-Value="Channel.Title" class="form-control" /> 
+                    <ValidationMessage For="() => Channel.Title" class="text-danger" /> 
+                </div>
+                <MyRssClient.Components.Pages.Helpers.ShowList @bind-URLs="Channel.URLs" Header="URLs" Disabled="true" />
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description:</label> 
+                    <InputText id="description" @bind-Value="Channel.Description" class="form-control" /> 
+                    <ValidationMessage For="() => Channel.Description" class="text-danger" /> 
+                </div>        
+                <div class="mb-3">
+                    <label for="language" class="form-label">Language:</label> 
+                    <InputText id="language" @bind-Value="Channel.Language" class="form-control" /> 
+                    <ValidationMessage For="() => Channel.Language" class="text-danger" /> 
+                </div>        
+                <div class="mb-3">
+                    <label for="lastpublishdate" class="form-label">LastPublishDate:</label> 
+                    <InputDate id="lastpublishdate" @bind-Value="Channel.LastPublishDate" class="form-control" /> 
+                    <ValidationMessage For="() => Channel.LastPublishDate" class="text-danger" /> 
+                </div>        
+                <div class="mb-3">
+                    <label for="lastfetchat" class="form-label">LastFetchAt:</label> 
+                    <InputDate id="lastfetchat" @bind-Value="Channel.LastFetchAt" class="form-control" /> 
+                    <ValidationMessage For="() => Channel.LastFetchAt" class="text-danger" /> 
+                </div>
+                <MyRssClient.Components.Pages.Helpers.ShowImages @bind-Channel="Channel" Header="Images" />
+                <button type="submit" class="btn btn-primary">Create</button>
+            </EditForm>
+        }
+    </div>
+</div>
+<div>
+    <a href="/channels">Back to List</a>
+</div>
+
+
+<ul class="position-fixed bottom-0 end-0">
+    @foreach (var url in @MyURLs) {
+        <li @onclick="() => FeedURL = url">@url</li>
+    }
+</ul>
+
+@code {
+    private static string[] MyURLs = [
+        "https://www.almayadeen.net/feed.rss",
+        "https://www.amnesty.de/rss.xml",
+        "https://www.amnesty.de/rss/amnesty-journal",
+        "https://www.amnesty.de/rss/blog",
+        "https://www.tagesschau.de/wissen/index~rss2.xml",
+        "https://feeds.bbci.co.uk/news/rss.xml",
+        "https://www.handelsblatt.com/contentexport/feed/finanzen",
+        "https://www.n-tv.de/politik/rss",
+    ];
+    // public string FeedURL = "https://www.almayadeen.net/feed.rss";
+    public string FeedURL = MyURLs[3];
+
+    private Channel? Channel;
+
+    // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task AddChannel() {
+        if (Channel is null) {
+            return;
+        }
+        using var context = DbFactory.CreateDbContext();
+        context.Channels.Add(Channel);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo($"/channels/details?id={Channel.Id}");
+    }
+
+    private async void FetchChannel() {
+        Channel = null;
+        try {
+            var feed = await rssService.Read_Channel(FeedURL);
+
+            Channel = await feedToDbConverter.ConvertAsync(feed, new Uri(FeedURL));
+            StateHasChanged();
+        } catch {
+            Channel = null;
+        }
+    }
+}

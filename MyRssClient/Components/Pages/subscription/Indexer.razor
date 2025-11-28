@@ -1,0 +1,79 @@
+﻿@page "/subscription/{Id}"
+@using Microsoft.EntityFrameworkCore
+@using MyRssClient.Models
+@inject IDbContextFactory<MyRssClient.Data.MyContext> DbFactory
+@inject NavigationManager Navigation
+@inject MyRssClient.Data.IConverterService<System.ServiceModel.Syndication.SyndicationFeed, MyRssClient.Models.Channel, MyRssClient.Models.Post> feedToDbConverter
+@inject MyRssClient.Data.IRssService rssService
+
+@if (channel == null) {
+    @* Do nothing, OnAfterRender should redirect. *@
+} else {
+    <div class="container mx-0" style="max-width: 63rem">
+        <div id="@channel.Id.ToString().ToUpper()" class="d-flex justify-content-between align-items-start gap-2">
+            <h1><a href="@($"/channels/edit?id={channel.Id}")" class="text-decoration-none">@channel.Title</a></h1>
+            <button class="btn btn-secondary text-nowrap" @onclick="CheckForNewPosts" disabled="@buttonDisabled">Check for new posts</button>
+        </div>
+
+        <div class="d-flex flex-column flex-xl-row flex-wrap gap-4 mb-3">
+        @foreach (var post in channel.Items.Take(10)) {
+            <MyRssClient.Components.Pages.Helpers.ShowPost Post="post" />
+        }
+        </div>
+    </div>
+}
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+    private Channel? channel;
+
+    protected override async Task OnInitializedAsync() {
+        await base.OnInitializedAsync();
+        using var context = DbFactory.CreateDbContext();
+        if (!Guid.TryParse(this.Id, out Guid Id)) {
+            return;
+        }
+        channel = await context.Channels
+            .Where(c => c.Id == Id)
+            .Include(c => c.Images.Where(i => i.IsSelected))
+            .Include(c => c.Items)
+            .ThenInclude(p => p.Images)
+            .FirstOrDefaultAsync();
+        if (channel is null) {
+            return;
+        }
+        channel.Items = channel.Items.OrderByDescending(i => i.PublishDate).ToList();
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (channel is null) {
+            Navigation.NavigateTo("notfound");
+            return;
+        }
+
+        base.OnAfterRender(firstRender);
+    }
+
+    private bool buttonDisabled = false;
+    private async void CheckForNewPosts() {
+        if (channel is null) {
+            return;
+        }
+        buttonDisabled = true;
+        var feed = await rssService.Read_Channel(channel.RssLink.ToString());
+
+        var newPosts = (await feedToDbConverter.ConvertItems(feed, channel));
+        using var context = DbFactory.CreateDbContext();
+        foreach (var post in newPosts) {
+            if (!channel.Items.Contains(post, new PostsComparer())) {
+                context.Entry(post).State = EntityState.Added;
+                foreach (var image in post.Images) {
+                    context.Entry(image).State = EntityState.Added;
+                }
+            }
+        }
+        channel.Items = channel.Items.Union(newPosts, new PostsComparer()).ToList();
+        await context.SaveChangesAsync();
+        buttonDisabled = false;
+    }
+}

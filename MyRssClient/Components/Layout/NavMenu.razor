@@ -1,0 +1,39 @@
+﻿@using Microsoft.EntityFrameworkCore
+@inject MyRssClient.Data.MyContext context
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">MyRssClient</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="channels" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Subscriptions
+            </NavLink>
+        </div>
+
+        <hr />
+        @foreach(var subscription in context.Channels.Include(c => c.Images)) {
+            var selectedImage = subscription.SelectedImage;
+            <div class="nav-item px-3 container">
+                <NavLink class="nav-link row py-0" href=@($"subscription/{subscription.Id}") style="line-height: unset;">
+                    @((selectedImage != null)
+                    ? @<img class="rounded-circle col-4" src="@selectedImage.ImageAsBase64">
+                    : @<span class="bi bi-link-45deg-nav-menu col-4" aria-hidden="true"></span>)
+                    <span class="col-8">@subscription.Title</span>
+                </NavLink>
+            </div>
+        }
+    </nav>
+</div>
+

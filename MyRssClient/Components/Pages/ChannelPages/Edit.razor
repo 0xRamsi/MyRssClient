@@ -1,0 +1,124 @@
+﻿@page "/channels/edit"
+@using Microsoft.EntityFrameworkCore
+@using MyRssClient.Models
+@inject IDbContextFactory<MyRssClient.Data.MyContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Edit</PageTitle>
+
+<h1>Edit</h1>
+
+<h2>Channel</h2>
+<hr />
+@if (Channel is null) {
+    <p><em>Loading...</em></p>
+} else {
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="Channel" OnValidSubmit="UpdateChannel" FormName="edit" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary role="alert"/>
+                <input type="hidden" name="Channel.Id" value="@Channel.Id" />
+                <div class="mb-3">
+                    <label for="title" class="form-label">Title:</label>
+                    <InputText id="title" @bind-Value="Channel.Title" class="form-control" />
+                    <ValidationMessage For="() => Channel.Title" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="rssLink" class="form-label">RssLink:</label>
+                    <input id="rssLink" value="@Channel.RssLink.ToString()" @onchange="ChangeRssLink" class="form-control" />
+                    <ValidationMessage For="() => Channel.RssLink" class="text-danger" />
+                </div>
+                <MyRssClient.Components.Pages.Helpers.ShowList @bind-URLs="Channel.URLs" Header="URLs" Disabled="false" />
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description:</label>
+                    <InputText id="description" @bind-Value="Channel.Description" class="form-control" />
+                    <ValidationMessage For="() => Channel.Description" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="language" class="form-label">Language:</label>
+                    <InputText id="language" @bind-Value="Channel.Language" class="form-control" />
+                    <ValidationMessage For="() => Channel.Language" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="lastpublishdate" class="form-label">LastPublishDate:</label>
+                    <InputDate id="lastpublishdate" @bind-Value="Channel.LastPublishDate" class="form-control" />
+                    <ValidationMessage For="() => Channel.LastPublishDate" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="lastfetchat" class="form-label">LastFetchAt:</label>
+                    <InputDate id="lastfetchat" @bind-Value="Channel.LastFetchAt" class="form-control" />
+                    <ValidationMessage For="() => Channel.LastFetchAt" class="text-danger" />
+                </div>
+                <MyRssClient.Components.Pages.Helpers.ShowImages @bind-Channel="Channel" Header="Images" />
+                <button type="submit" class="btn btn-primary">Save</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div>
+    <a href="/channels">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private Guid Id { get; set; }
+
+    private Channel? Channel { get; set; }
+    private ICollection<ChannelImage> originalImages { get; set; } = [];    // This is a cheap version of viewmodel.
+
+    protected override async Task OnInitializedAsync() {
+        using var context = DbFactory.CreateDbContext();
+        Channel ??= await context.Channels.Where(c => c.Id == Id).Include(c => c.Images).FirstOrDefaultAsync();
+
+        if (Channel is null) {
+            NavigationManager.NavigateTo("notfound");
+        } else {
+            originalImages = Channel.Images.ToList();
+        }
+    }
+
+    // To protect from overposting attacks, enable the specific properties you want to bind to.
+    // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task UpdateChannel() {
+        if (Channel is null) throw new Exception("Channel should not be null!");
+        using var context = DbFactory.CreateDbContext();
+        context.Attach(Channel).State = EntityState.Modified;
+        foreach (var image in originalImages) {
+            if (!Channel.Images.Contains(image)) {
+                context.Entry(image).State = EntityState.Deleted;
+            }
+        }
+        foreach (var image in Channel.Images) {
+            if (!originalImages.Contains(image)) {
+                context.Entry(image).State = EntityState.Added;
+            } else {
+                context.Entry(image).State = EntityState.Modified;
+            }
+        }
+
+        try {
+            await context.SaveChangesAsync();
+        } catch (DbUpdateConcurrencyException) {
+            if (!ChannelExists(Channel.Id)) {
+                NavigationManager.NavigateTo("notfound");
+            } else {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo($"/channels/details?id={Id}");
+    }
+
+    private bool ChannelExists(Guid id) {
+        using var context = DbFactory.CreateDbContext();
+        return context.Channels.Any(e => e.Id == id);
+    }
+
+    private void ChangeRssLink(ChangeEventArgs args) {
+        if (Uri.TryCreate(args.Value?.ToString() ?? string.Empty, UriKind.RelativeOrAbsolute, out Uri? newRssLink)) {
+            Channel!.RssLink = newRssLink;
+        }
+    }
+}

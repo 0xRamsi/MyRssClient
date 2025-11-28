@@ -1,0 +1,62 @@
+﻿@page "/channels/details"
+@using Microsoft.EntityFrameworkCore
+@using MyRssClient.Models
+@using System.Text.Json
+@inject IDbContextFactory<MyRssClient.Data.MyContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Details</PageTitle>
+
+<h1>Details</h1>
+
+<div>
+    <h2>Channel</h2>
+    <hr />
+    @if (channel is null) {
+        <p><em>Loading...</em></p>
+    } else {
+        <dl class="row">
+            <dt class="col-sm-2">Title</dt>
+            <dd class="col-sm-10">@channel.Title</dd>
+            <dt class="col-sm-2">RssLink</dt>
+            <dd class="col-sm-10">@channel.RssLink</dd>
+            <dt class="col-sm-2">URLs</dt>
+            <dd class="col-sm-10">@JsonSerializer.Serialize(channel.URLs)</dd>
+            <dt class="col-sm-2">Description</dt>
+            <dd class="col-sm-10">@channel.Description</dd>
+            <dt class="col-sm-2">Language</dt>
+            <dd class="col-sm-10">@channel.Language</dd>
+            <dt class="col-sm-2">LastPublishDate</dt>
+            <dd class="col-sm-10">@channel.LastPublishDate</dd>
+            <dt class="col-sm-2">LastFetchAt</dt>
+            <dd class="col-sm-10">@channel.LastFetchAt</dd>
+            <dt class="col-sm-2">Posts</dt>
+            <dd class="col-sm-10">@channel.Items.Count()</dd>
+        </dl>
+        <MyRssClient.Components.Pages.Helpers.ShowImages @bind-Channel="channel" Header="Images" Disabled="true" />
+        <div>
+            <a href="@($"/channels/edit?id={channel.Id}")">Edit</a> |
+            <a href="@($"/channels")">Back to List</a>
+        </div>
+    }
+</div>
+
+@code {
+    private Channel? channel;
+
+    [SupplyParameterFromQuery]
+    private Guid Id { get; set; }
+
+    protected override async Task OnInitializedAsync() {
+        using var context = DbFactory.CreateDbContext();
+        channel = await context.Channels
+            .Where(c => c.Id == Id)
+            .Include(c => c.Images)
+            .Include(c => c.Items)
+            .FirstOrDefaultAsync();
+
+        if (channel is null) {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+}
