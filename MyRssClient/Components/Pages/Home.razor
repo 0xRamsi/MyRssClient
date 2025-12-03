@@ -1,4 +1,7 @@
 ﻿@page "/"
+@using Microsoft.EntityFrameworkCore
+@using MyRssClient.Models
+@inject IDbContextFactory<MyRssClient.Data.MyContext> DbFactory
 @inject NavigationManager Navigation
 
 <PageTitle>Home</PageTitle>
@@ -8,15 +11,92 @@
 This is just a show of this project. It has no user-logins, and every change is visible to all. Feel free to try it out, but consider that other people might be here at the same time.
 <br />
 <br />
-To do: Show here a list of some posts from all subscriptions.
-<ul>
-    <li>Random</li>
-    <li>Chronological</li>
-    <li>Unread</li>
-    <li>Other ranking algorithm</li>
+
+<ul class="nav nav-tabs">
+    @foreach (var rankingPair in rankingAlgorithms) {
+        <li class="nav-item nav-link" @onclick="rankingPair.Item2">@rankingPair.Item1</li>
+    }
+
 </ul>
 
+<div class="container mx-0" style="max-width: 63rem">
+    <div class="d-flex flex-column flex-xl-row flex-wrap gap-4 mb-3">
+        @foreach (var post in itemsToShow.Take(10)) {
+            <MyRssClient.Components.Pages.Helpers.ShowPost Post="post" />
+        }
+    </div>
+</div>
+
 @code {
+    private ICollection<Post> itemsToShow { get; set; } = [];
+    private IList<(string, Action)> rankingAlgorithms = [];
+    private int NumberOfPostsToDisplayPerPage = 10;
+
+    protected override async Task OnInitializedAsync() {
+        await base.OnInitializedAsync();
+        rankingAlgorithms = [
+            ("Chronological", Chronological),
+            ("Random", Random),
+            ("Unread", Unread),
+            ("Liked", Liked),
+            ("Other ranking algorithm", Other),
+    ];
+    }
+    private void Chronological() {
+        using var context = DbFactory.CreateDbContext();
+        var temp = context.Posts
+            .OrderByDescending(i => i.PublishDate.ToString())
+            .Include(p => p.ParentChannel)
+            .ThenInclude(c => c.Images)
+            .Include(p => p.Images)
+            .Take(NumberOfPostsToDisplayPerPage)
+            ;
+        itemsToShow = temp.ToList();
+    }
+    private void Random() {
+        using var context = DbFactory.CreateDbContext();
+        Random rand = new();
+        var skip = (int)(rand.NextDouble() * context.Posts.Count());
+        var temp = context.Posts
+            .OrderBy(p => p.Guid)
+            .Skip(skip)
+            .Include(p => p.ParentChannel)
+            .ThenInclude(c => c.Images)
+            .Include(p => p.Images)
+            .Take(NumberOfPostsToDisplayPerPage)
+            ;
+        itemsToShow = temp.ToList();
+    }
+    private void Unread() {
+        using var context = DbFactory.CreateDbContext();
+        var temp = context.Posts
+            .Where(p => !p.IsRead)
+            .OrderByDescending(i => i.PublishDate.ToString())
+            .Include(p => p.ParentChannel)
+            .ThenInclude(c => c.Images)
+            .Include(p => p.Images)
+            .Take(NumberOfPostsToDisplayPerPage)
+            ;
+        itemsToShow = temp.ToList();
+    }
+    private void Liked() {
+        using var context = DbFactory.CreateDbContext();
+        var temp = context.Posts
+            .Where(p => p.IsLiked)
+            .OrderByDescending(i => i.PublishDate.ToString())
+            .Include(p => p.ParentChannel)
+            .ThenInclude(c => c.Images)
+            .Include(p => p.Images)
+            .Take(NumberOfPostsToDisplayPerPage)
+            ;
+        itemsToShow = temp.ToList();
+    }
+    private void Other() {
+        // TODO:
+        itemsToShow = [];
+    }
+
+
     protected override void OnAfterRender(bool firstRender) {
         base.OnAfterRender(firstRender);
         var tagesschau = "34d2e55b-a6fe-4b14-9e67-262e86a784f0";
