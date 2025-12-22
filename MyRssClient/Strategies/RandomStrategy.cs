@@ -1,0 +1,22 @@
+﻿using Microsoft.EntityFrameworkCore;
+using MyRssClient.Data;
+using MyRssClient.Models;
+
+namespace MyRssClient.Strategies {
+    public class RandomStrategy : ISortFilterStrategy {
+        public async Task<ICollection<Post>> ProcessAsync(IDbContextFactory<MyContext> contextFactory, int NumberOfPostsToDisplayPerPage) {
+            await using var context = await contextFactory.CreateDbContextAsync();
+            Random rand = new();
+            var skip = (int)(rand.NextDouble() * context.Posts.Count());
+            var result = context.Posts
+                .OrderBy(p => p.Guid)
+                .Skip(skip)
+                .Include(p => p.ParentChannel)
+                .ThenInclude(c => c.Images)
+                .Include(p => p.Images)
+                .Take(NumberOfPostsToDisplayPerPage)
+                ;
+            return await Task.FromResult(result.ToList());
+        }
+    }
+}

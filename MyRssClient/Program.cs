@@ -2,6 +2,7 @@ using Ljbc1994.Blazor.IntersectionObserver;
 using Microsoft.EntityFrameworkCore;
 using MyRssClient.Components;
 using MyRssClient.Data;
+using MyRssClient.Services;
 using System.ServiceModel.Syndication;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +19,8 @@ builder.Services.AddDbContextFactory<MyContext>(options =>
 
 builder.Services.AddScoped<IRssService, RssService>();
 builder.Services.AddScoped<IConverterService<SyndicationFeed, MyRssClient.Models.Channel, MyRssClient.Models.Post>, SyndictionFeedToDbModel>();
+
+builder.Services.AddScoped<GetDataService>();
 
 builder.Services.AddQuickGridEntityFrameworkAdapter();
 builder.Services.AddIntersectionObserver();

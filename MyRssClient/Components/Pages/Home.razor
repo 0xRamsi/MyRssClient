@@ -1,7 +1,7 @@
 ﻿@page "/"
 @using Microsoft.EntityFrameworkCore
-@using MyRssClient.Models
 @inject IDbContextFactory<MyRssClient.Data.MyContext> DbFactory
+@inject MyRssClient.Services.GetDataService GetDataService
 @inject NavigationManager Navigation
 
 <PageTitle>Home</PageTitle>
@@ -13,89 +13,28 @@ This is just a show of this project. It has no user-logins, and every change is 
 <br />
 
 <ul class="nav nav-tabs">
-    @foreach (var rankingPair in rankingAlgorithms) {
-        <li class="nav-item nav-link" @onclick="rankingPair.Item2">@rankingPair.Item1</li>
+    @foreach (var rankingName in GetDataService.GetRankingNames()) {
+        <li class="nav-item nav-link @(SelectedAlgo == rankingName ? "active" : string.Empty)" @onclick="() => chooseRanking(rankingName)">@rankingName</li>
     }
-
 </ul>
 
 <div class="container mx-0" style="max-width: 63rem">
     <div class="d-flex flex-column flex-xl-row flex-wrap gap-4 mb-3">
-        @foreach (var post in itemsToShow.Take(10)) {
+        @foreach (var post in itemsToShow.Take(NumberOfPostsToDisplayPerPage)) {
             <MyRssClient.Components.Pages.Helpers.ShowPost Post="post" />
         }
     </div>
 </div>
 
 @code {
-    private ICollection<Post> itemsToShow { get; set; } = [];
-    private IList<(string, Action)> rankingAlgorithms = [];
+    private ICollection<MyRssClient.Models.Post> itemsToShow { get; set; } = [];
     private int NumberOfPostsToDisplayPerPage = 10;
+    private string SelectedAlgo = string.Empty;
 
-    protected override async Task OnInitializedAsync() {
-        await base.OnInitializedAsync();
-        rankingAlgorithms = [
-            ("Chronological", Chronological),
-            ("Random", Random),
-            ("Unread", Unread),
-            ("Liked", Liked),
-            ("Other ranking algorithm", Other),
-    ];
+    private async Task chooseRanking(string selectedAlgo) {
+        SelectedAlgo = selectedAlgo;
+        itemsToShow = await GetDataService.GetData(selectedAlgo, NumberOfPostsToDisplayPerPage);
     }
-    private void Chronological() {
-        using var context = DbFactory.CreateDbContext();
-        var temp = context.Posts
-            .OrderByDescending(i => i.PublishDate.ToString())
-            .Include(p => p.ParentChannel)
-            .ThenInclude(c => c.Images)
-            .Include(p => p.Images)
-            .Take(NumberOfPostsToDisplayPerPage)
-            ;
-        itemsToShow = temp.ToList();
-    }
-    private void Random() {
-        using var context = DbFactory.CreateDbContext();
-        Random rand = new();
-        var skip = (int)(rand.NextDouble() * context.Posts.Count());
-        var temp = context.Posts
-            .OrderBy(p => p.Guid)
-            .Skip(skip)
-            .Include(p => p.ParentChannel)
-            .ThenInclude(c => c.Images)
-            .Include(p => p.Images)
-            .Take(NumberOfPostsToDisplayPerPage)
-            ;
-        itemsToShow = temp.ToList();
-    }
-    private void Unread() {
-        using var context = DbFactory.CreateDbContext();
-        var temp = context.Posts
-            .Where(p => !p.IsRead)
-            .OrderByDescending(i => i.PublishDate.ToString())
-            .Include(p => p.ParentChannel)
-            .ThenInclude(c => c.Images)
-            .Include(p => p.Images)
-            .Take(NumberOfPostsToDisplayPerPage)
-            ;
-        itemsToShow = temp.ToList();
-    }
-    private void Liked() {
-        using var context = DbFactory.CreateDbContext();
-        var temp = context.Posts
-            .Where(p => p.IsLiked)
-            .OrderByDescending(i => i.PublishDate.ToString())
-            .Include(p => p.ParentChannel)
-            .ThenInclude(c => c.Images)
-            .Include(p => p.Images)
-            .Take(NumberOfPostsToDisplayPerPage)
-            ;
-        itemsToShow = temp.ToList();
-    }
-    private void Other() {
-        // TODO:
-        itemsToShow = [];
-    }
-
 
     protected override void OnAfterRender(bool firstRender) {
         base.OnAfterRender(firstRender);
