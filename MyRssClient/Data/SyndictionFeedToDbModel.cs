@@ -170,6 +170,8 @@ namespace MyRssClient.Data {
             tiff,
             png,
             webp,
+            ico,
+            cur,
             unknown
         }
 
@@ -183,6 +185,8 @@ namespace MyRssClient.Data {
             byte[] tiff2 = [77, 77, 42];
             byte[] jpeg = [255, 216, 255, 224];
             byte[] jpeg2 = [255, 216, 255, 225];
+            byte[] ico = [0, 0, 1, 0];
+            byte[] cur = [0, 0, 2, 0];
 
             if (webp1.SequenceEqual(bytes.Take(webp1.Length)))
                 return ImageFormat.webp;
@@ -210,6 +214,12 @@ namespace MyRssClient.Data {
 
             if (tiff2.SequenceEqual(bytes.Take(tiff2.Length)))
                 return ImageFormat.tiff;
+
+            if (ico.SequenceEqual(bytes.Take(ico.Length)))
+                return ImageFormat.ico;
+
+            if (cur.SequenceEqual(bytes.Take(cur.Length)))
+                return ImageFormat.cur;
 
             return ImageFormat.unknown;
         }

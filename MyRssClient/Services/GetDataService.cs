@@ -9,6 +9,8 @@ namespace MyRssClient.Services {
             ["Random"] = new RandomStrategy(),
             ["Unread"] = new UnreadStrategy(),
             ["Liked"] = new LikedStrategy(),
+            ["Bag of Words"] = new BagOfWordsStrategy(),
+            ["GloVe"] = new GloVeStrategy(),
             ["Other ranking algorithm"] = new EmptyListStrategy(),
         };
 
