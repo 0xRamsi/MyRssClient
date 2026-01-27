@@ -2,7 +2,6 @@ using Ljbc1994.Blazor.IntersectionObserver;
 using Microsoft.EntityFrameworkCore;
 using MyRssClient.Components;
 using MyRssClient.Data;
-using MyRssClient.Services;
 using System.ServiceModel.Syndication;
 
 var builder = WebApplication.CreateBuilder(args);

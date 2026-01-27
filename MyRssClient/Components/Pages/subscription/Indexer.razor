@@ -27,8 +27,8 @@
     public string Id { get; set; } = string.Empty;
     private Channel? channel;
 
-    protected override async Task OnInitializedAsync() {
-        await base.OnInitializedAsync();
+    protected async override Task OnParametersSetAsync() {
+        await base.OnParametersSetAsync();
         using var context = DbFactory.CreateDbContext();
         if (!Guid.TryParse(this.Id, out Guid Id)) {
             return;

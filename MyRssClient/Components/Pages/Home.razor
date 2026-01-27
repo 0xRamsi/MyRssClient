@@ -1,7 +1,8 @@
 ﻿@page "/"
 @using Microsoft.EntityFrameworkCore
+@using MyRssClient.Data
 @inject IDbContextFactory<MyRssClient.Data.MyContext> DbFactory
-@inject MyRssClient.Services.GetDataService GetDataService
+@inject GetDataService GetDataService
 @inject NavigationManager Navigation
 
 <PageTitle>Home</PageTitle>
